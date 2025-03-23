@@ -1,3 +1,5 @@
+version: '3.8'
+
 networks:
   frontend:
   backend:
@@ -19,7 +21,8 @@ x-op-app: &app
     RAILS_CACHE_STORE: "memcache"
     OPENPROJECT_CACHE__MEMCACHE__SERVER: "cache:11211"
     OPENPROJECT_RAILS__RELATIVE__URL__ROOT: "${OPENPROJECT_RAILS__RELATIVE__URL__ROOT:-}"
-    DATABASE_URL: "${DATABASE_URL:-postgres://postgres:p4ssw0rd@db/openproject?pool=20&encoding=unicode&reconnect=true}"
+    # 使用环境变量构建 DATABASE_URL
+    DATABASE_URL: "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}?pool=20&encoding=unicode&reconnect=true"
     RAILS_MIN_THREADS: ${RAILS_MIN_THREADS:-4}
     RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-16}
     # set to true to enable the email receiving feature. See ./docker/cron for more options
@@ -35,8 +38,9 @@ services:
     volumes:
       - "${PGDATA:-pgdata}:/var/lib/postgresql/data"
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-p4ssw0rd}
-      POSTGRES_DB: openproject
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} #  PostgreSQL 密码，从环境变量获取 (db 服务内部使用)
+      POSTGRES_USER: ${DB_USER:-postgres}     #  PostgreSQL 用户名，从环境变量获取，默认 postgres
+      POSTGRES_DB: ${DB_NAME:-openproject}       #  PostgreSQL 数据库名，从环境变量获取，默认 openproject
     networks:
       - backend
 
@@ -47,10 +51,6 @@ services:
       - backend
 
   proxy:
-    build:
-      context: ./proxy
-      args:
-        APP_HOST: web
     image: openproject/proxy
     <<: *restart_policy
     ports:
